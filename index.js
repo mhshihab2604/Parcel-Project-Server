@@ -35,6 +35,7 @@ async function run() {
 
     app.put('/users', async (req, res) => {
         const user = req.body
+        console.log(user);
         const query = { email: user?.email }
         const isExist = await usersCollection.findOne(query)
         if (isExist) return res.send(isExist)
@@ -118,6 +119,38 @@ async function run() {
       const result = await parcelCollection.updateOne(filter, updateDoc);
       res.send(result);
   });
+  // Admin make a admin
+  app.patch('/users/admin/:id', async(req, res) => {
+    const id = req.params.id;
+    const filter = {_id: new ObjectId(id)};
+    const updatedDoc = {
+      $set: {
+        role: 'admin'
+      }
+    }
+    const result = await usersCollection.updateOne(filter, updatedDoc);
+    res.send(result);
+  })
+  // Admin make a delivery
+  app.patch('/users/deliveryMan/:id', async(req, res) => {
+    const id = req.params.id;
+    const filter = {_id: new ObjectId(id)};
+    const updatedDoc = {
+      $set: {
+        role: 'deliveryMan'
+      }
+    }
+    const result = await usersCollection.updateOne(filter, updatedDoc);
+    res.send(result);
+  })
+
+  // all delivery Show
+  app.get('/users/u/delivery', async (req, res) => {
+    const result = await usersCollection.find({role:'deliveryMan'}).toArray();
+    console.log(result);
+    res.send(result);
+  });
+
 
 
     // Send a ping to confirm a successful connection
