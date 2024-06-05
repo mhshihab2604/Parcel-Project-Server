@@ -152,6 +152,36 @@ async function run() {
   });
 
 
+  app.put('/parcel/u/:id', async (req, res) => {
+    try {
+        const id = req.params.id;
+        if (!ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: "Invalid ID format" });
+        }
+
+        const filter = { _id: new ObjectId(id) };
+        const options = { upsert: true };
+        const addDeliveryMan = req.body;
+
+        const deliveryManUpdate = {
+            $set: {
+                ...addDeliveryMan
+            }
+        };
+
+        const result = await parcelCollection.updateOne(filter, deliveryManUpdate, options);
+
+        if (result.matchedCount === 0 && result.upsertedCount === 0) {
+            return res.status(404).json({ success: false, message: "Parcel not found" });
+        }
+
+        res.status(200).json({ success: true, message: "Updated successfully" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: "An error occurred", error: error.message });
+    }
+});
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
