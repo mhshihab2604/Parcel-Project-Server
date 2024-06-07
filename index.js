@@ -95,6 +95,18 @@ async function run() {
       res.send(result);
     })
 
+
+
+    app.get('/parcel/delivery/:email', async (req, res) => {
+            const user = await usersCollection.findOne({ email: req.params.email })
+            if (!user) {
+                return res.send('user not found')
+            }
+            const userId = user._id.toString()
+            const parcels = await parcelCollection.find({ deliveryManId: userId }).toArray()
+            res.send(parcels)
+    })
+
     // --------Delete Booking Parcel ---------
     app.delete("/parcel/:id", async(req, res) => {
       const id = req.params.id;
@@ -181,6 +193,7 @@ async function run() {
         res.status(500).json({ success: false, message: "An error occurred", error: error.message });
     }
 });
+
 
 
     // Send a ping to confirm a successful connection
