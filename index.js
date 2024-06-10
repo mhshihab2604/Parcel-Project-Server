@@ -3,7 +3,7 @@ const app = express();
 const cors = require('cors');
 require('dotenv').config()
 const port = process.env.PORT || 5000;
-
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY)
 
 // middleware
 app.use(cors());
@@ -28,6 +28,7 @@ async function run() {
     await client.connect();
     const usersCollection = client.db('parcelDB').collection('users')
     const parcelCollection = client.db('parcelDB').collection('parcel')
+    const reviewCollection = client.db('parcelDB').collection('reviews')
 
     const isValidObjectId = (id) => {
       return ObjectId.isValid(id) && (String(new ObjectId(id)) === id);
@@ -193,13 +194,60 @@ async function run() {
         res.status(500).json({ success: false, message: "An error occurred", error: error.message });
     }
 });
+app.get('/reviews', async (req, res) => {
+  const result = await reviewCollection.find().toArray();
+  res.send(result);
+});
+
+app.post('/reviews', async (req, res) => {
+  const item = req.body;
+  const result = await reviewCollection.insertOne(item);
+  res.send(result);
+})
+app.get('/reviews/deliveryManId/:email', async (req, res) => {
+  try {
+    const email = req.params.email;
+    const deliveryMan = await usersCollection.findOne({ email });
+
+    if (!deliveryMan || deliveryMan.role !== 'deliveryMan') {
+      return res.status(403).json({ message: 'Access Forbidden' });
+    }
+
+    const reviews = await reviewCollection.find({ deliveryMenId: deliveryMan._id.toString() }).toArray();
+    res.json(reviews);
+  } catch (error) {
+    console.error("Error fetching reviews:", error);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
+
+app.post('/create-payment-intent', async (req, res) => {
+  const { price = 0 } = req.body;
+
+  // Validate price
+  if (price < 0.5) { // Stripe's minimum charge amount for USD is $0.50
+      return res.status(400).send({ message: 'Amount must be at least $0.50' });
+  }
+
+  const amount = Math.round(price * 100);
+  const paymentIntent = await stripe.paymentIntents.create({
+      amount: amount,
+      currency: 'usd',
+      payment_method_types: ['card']
+  });
+
+  res.send({
+      clientSecret: paymentIntent.client_secret
+  });
+});
 
 
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
-  } finally {
+    } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
   }
